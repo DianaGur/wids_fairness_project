@@ -1,0 +1,14 @@
+# Data and heavy files
+data/
+*.csv
+*.parquet
+
+# Python outputs
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# VS Code & Jupyter
+.vscode/
+.ipynb_checkpoints/
