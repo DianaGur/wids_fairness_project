@@ -1,13 +1,15 @@
 import xgboost as xgb
-import numpy as np
 import pandas as pd
 
-def train_xgboost_model(X_train: pd.DataFrame, y_train: pd.Series, scale_pos_weight: float = None) -> xgb.XGBClassifier:
+DEFAULT_RANDOM_STATE = 42
+
+def train_xgboost_model(X_train: pd.DataFrame, y_train: pd.Series, scale_pos_weight: float = None,
+                         random_state: int = DEFAULT_RANDOM_STATE) -> xgb.XGBClassifier:
     """
     Trains an XGBoost Classifier on the preprocessed training set.
     """
-    print("🚀 Training XGBoost model...")
-    
+    print("Training XGBoost model...")
+
     # Handling Class Imbalance automatically if scale_pos_weight is not provided
     if scale_pos_weight is None:
         neg_count = (y_train == 0).sum()
@@ -20,12 +22,12 @@ def train_xgboost_model(X_train: pd.DataFrame, y_train: pd.Series, scale_pos_wei
         learning_rate=0.1,
         scale_pos_weight=scale_pos_weight,
         eval_metric='logloss',
-        random_state=42,
+        random_state=random_state,
         n_jobs=-1  # Uses all CPU cores
     )
-    
+
     model.fit(X_train, y_train)
-    print("✅ XGBoost model training complete!")
+    print("XGBoost model training complete.")
     return model
 
 def predict_model(model: xgb.XGBClassifier, X_test: pd.DataFrame, threshold: float = 0.5):

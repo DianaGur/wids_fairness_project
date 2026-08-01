@@ -2,16 +2,20 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score, confusion_matrix
 
+ELDERLY_AGE_THRESHOLD = 65
+
 def calculate_fnr(y_true, y_pred) -> float:
     """
-    Calculates False Negative Rate (FNR = FN / (FN + TP))
+    Calculates False Negative Rate (FNR = FN / (FN + TP)).
+    Returns NaN when FNR is undefined (no ground-truth positives, or an
+    empty/degenerate subgroup) rather than 0.0, so an unmeasurable subgroup
+    is never mistaken for a perfectly fair one.
     """
-    cm = confusion_matrix(y_true, y_pred)
-    if cm.shape != (2, 2):
-        return 0.0
+    if len(y_true) == 0:
+        return np.nan
+    cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
     tn, fp, fn, tp = cm.ravel()
-    fnr = fn / (fn + tp) if (fn + tp) > 0 else 0.0
-    return fnr
+    return fn / (fn + tp) if (fn + tp) > 0 else np.nan
 
 def evaluate_performance_and_fairness(df_test_raw: pd.DataFrame, y_true: pd.Series, y_probs: np.ndarray, y_preds: np.ndarray):
     """
@@ -48,16 +52,16 @@ def evaluate_performance_and_fairness(df_test_raw: pd.DataFrame, y_true: pd.Seri
         results['Subgroup FNR']['Male'] = fnr_male
         results['Delta_FNR_Gender'] = abs(fnr_female - fnr_male)
 
-    # 3. Age Audit (Elderly >= 65 vs Young < 65)
+    # 3. Age Audit (Elderly >= threshold vs Young < threshold)
     if 'age' in eval_df.columns and eval_df['age'].notna().any():
-        elderly_mask = eval_df['age'] >= 65
-        young_mask = eval_df['age'] < 65
-        
+        elderly_mask = eval_df['age'] >= ELDERLY_AGE_THRESHOLD
+        young_mask = eval_df['age'] < ELDERLY_AGE_THRESHOLD
+
         fnr_elderly = calculate_fnr(eval_df.loc[elderly_mask, 'y_true'], eval_df.loc[elderly_mask, 'y_pred'])
         fnr_young = calculate_fnr(eval_df.loc[young_mask, 'y_true'], eval_df.loc[young_mask, 'y_pred'])
-        
-        results['Subgroup FNR']['Elderly (>=65)'] = fnr_elderly
-        results['Subgroup FNR']['Young (<65)'] = fnr_young
+
+        results['Subgroup FNR'][f'Elderly (>={ELDERLY_AGE_THRESHOLD})'] = fnr_elderly
+        results['Subgroup FNR'][f'Young (<{ELDERLY_AGE_THRESHOLD})'] = fnr_young
         results['Delta_FNR_Age'] = abs(fnr_elderly - fnr_young)
-        
+
     return results
