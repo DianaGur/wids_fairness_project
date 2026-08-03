@@ -7,6 +7,22 @@ from sklearn.impute import IterativeImputer
 from sklearn.ensemble import ExtraTreesRegressor
 from sklearn.preprocessing import OrdinalEncoder
 
+# ====================================================================
+# PURPOSE: Splits features/target into train/test sets and ordinal-
+#          encodes categorical columns.
+# ----------------------------------------------------------------------
+# PARAMS:  X            - feature DataFrame
+#          y            - target Series, used to stratify the split
+#          test_size    - fraction of rows held out for testing
+#                         (default 0.2)
+#          random_state - seed for reproducible splitting (default 42)
+#
+# RETURNS: (X_train, X_test, y_train, y_test)
+#
+# NOTES:   The ordinal encoder is fit on the training split only, so
+#          test-set category vocabulary never leaks into training.
+#          Unknown categories in X_test are encoded as NaN.
+# ====================================================================
 def prepare_and_split_data(X: pd.DataFrame, y: pd.Series, test_size: float = 0.2, random_state: int = 42):
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=random_state, stratify=y
@@ -25,6 +41,31 @@ def prepare_and_split_data(X: pd.DataFrame, y: pd.Series, test_size: float = 0.2
     return X_train, X_test, y_train, y_test
 AGE_BUCKET_WIDTH = 10
 
+# ====================================================================
+# PURPOSE: Applies one of several missing-value imputation strategies
+#          to the train/test feature sets.
+# ----------------------------------------------------------------------
+# PARAMS:  X_train      - training feature DataFrame
+#          X_test       - test feature DataFrame
+#          method       - imputation strategy; one of "none",
+#                         "global_median", "stratified_median", "knn",
+#                         "mice", "missforest" (default "none")
+#          n_neighbors  - neighbor count used only by "knn" (default 5)
+#          max_samples  - row cap applied to X_train when method is
+#                         "knn"/"mice"/"missforest" (default 10000)
+#          random_state - seed for sampling/imputers (default 42)
+#
+# RETURNS: (X_train_imp, X_test_imp) - imputed train/test DataFrames
+#
+# NOTES:   For "knn"/"mice"/"missforest", X_train is subsampled to at
+#          most max_samples rows before fitting AND transforming
+#          (KNN-style transform cost scales with rows_transformed x
+#          reference_rows x features, so sampling only at fit time
+#          isn't enough to keep runtime manageable on CPU). Callers
+#          must therefore re-align y_train to X_train_imp.index. The
+#          test set is always transformed in full so subgroup fairness
+#          metrics keep their statistical power.
+# ====================================================================
 def apply_imputation(X_train: pd.DataFrame, X_test: pd.DataFrame, method: str = "none",
                       n_neighbors: int = 5, max_samples: int = 10000, random_state: int = 42):
     """

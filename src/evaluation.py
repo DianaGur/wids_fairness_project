@@ -4,6 +4,20 @@ from sklearn.metrics import roc_auc_score, confusion_matrix
 
 ELDERLY_AGE_THRESHOLD = 65
 
+# ====================================================================
+# PURPOSE: Calculates the False Negative Rate (FNR) for a set of
+#          predictions.
+# ----------------------------------------------------------------------
+# PARAMS:  y_true - ground-truth binary labels
+#          y_pred - predicted binary labels
+#
+# RETURNS: float - FNR = FN / (FN + TP)
+#
+# NOTES:   Returns NaN (instead of 0.0) when FNR is undefined, i.e. no
+#          ground-truth positives or an empty/degenerate subgroup, so
+#          an unmeasurable subgroup is never mistaken for a perfectly
+#          fair one.
+# ====================================================================
 def calculate_fnr(y_true, y_pred) -> float:
     """
     Calculates False Negative Rate (FNR = FN / (FN + TP)).
@@ -17,6 +31,26 @@ def calculate_fnr(y_true, y_pred) -> float:
     tn, fp, fn, tp = cm.ravel()
     return fn / (fn + tp) if (fn + tp) > 0 else np.nan
 
+# ====================================================================
+# PURPOSE: Evaluates global model performance and audits fairness
+#          (FNR disparity) across gender and age subgroups.
+# ----------------------------------------------------------------------
+# PARAMS:  df_test_raw - raw (pre-encoding) test features, used to read
+#                         the 'gender' and 'age' sensitive attributes
+#          y_true       - ground-truth test labels
+#          y_probs      - predicted positive-class probabilities
+#          y_preds      - thresholded binary predictions
+#
+# RETURNS: dict with keys 'Global AUC', 'Global FNR', 'Subgroup FNR'
+#          (per-subgroup FNR values), and, when the relevant column is
+#          present, 'Delta_FNR_Gender' / 'Delta_FNR_Age' (absolute FNR
+#          gap between subgroups)
+#
+# NOTES:   Gender is split into Female/Male via value matching on
+#          {0,'F','female'} / {1,'M','male'}. Age is split into
+#          elderly (>= ELDERLY_AGE_THRESHOLD) vs young cohorts. Either
+#          audit is skipped if its column is absent or entirely NaN.
+# ====================================================================
 def evaluate_performance_and_fairness(df_test_raw: pd.DataFrame, y_true: pd.Series, y_probs: np.ndarray, y_preds: np.ndarray):
     """
     Evaluates global AUC, FNR, and demographic disparity across gender and age cohorts.

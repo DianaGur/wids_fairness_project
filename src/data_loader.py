@@ -5,6 +5,21 @@ import kagglehub
 
 KAGGLE_DATASET_SLUG = "behordeun/wids2020"
 
+# ====================================================================
+# PURPOSE: Loads the WiDS ICU dataset, preferring a local CSV over a
+#          fresh download.
+# ----------------------------------------------------------------------
+# PARAMS:  local_raw_dir - path to the folder checked first for an
+#                           existing dataset CSV (default "data/raw")
+#
+# RETURNS: pd.DataFrame - the loaded dataset
+#
+# NOTES:   If no local CSV is found, downloads the dataset via Kagglehub
+#          and copies it into local_raw_dir so later runs skip the
+#          download. Always picks the largest CSV in a directory to
+#          avoid selecting dictionaries/templates instead of the main
+#          dataset file.
+# ====================================================================
 def load_wids_dataset(local_raw_dir: str = "data/raw") -> pd.DataFrame:
     """
     Loads the WiDS ICU dataset from local 'data/raw' folder or via Kagglehub.
@@ -51,6 +66,21 @@ def load_wids_dataset(local_raw_dir: str = "data/raw") -> pd.DataFrame:
     print(f"Dataset successfully loaded! Shape: {df.shape}")
     return df
 
+# ====================================================================
+# PURPOSE: Splits a DataFrame into features (X) and target (y), and
+#          drops identifier columns that shouldn't be used for
+#          prediction.
+# ----------------------------------------------------------------------
+# PARAMS:  df         - full dataset including the target column
+#          target_col - name of the target column (default
+#                        "diabetes_mellitus")
+#
+# RETURNS: (X, y) - X is the feature DataFrame (identifier columns
+#           removed), y is the target Series cast to int
+#
+# NOTES:   Rows where the target itself is missing are dropped before
+#          the split.
+# ====================================================================
 def get_target_and_features(df: pd.DataFrame, target_col: str = "diabetes_mellitus"):
     """
     Splits DataFrame into features (X) and target variable (y).
